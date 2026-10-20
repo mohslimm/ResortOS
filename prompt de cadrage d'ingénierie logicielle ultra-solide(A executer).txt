@@ -1,0 +1,51 @@
+# CONTEXTE & OBJECTIF TECHNIQUE
+Tu es un ingénieur logiciel principal expert de la stack MERN et des architectures Monorepo complexes. Nous développons "resortOS", une extension de notre CRM Full-Stack SaaS existant (`c:\dev\merchant dashboard`) configuré avec npm workspaces :
+- /shared : Schémas Zod, validation de bout en bout.
+- /backend : Node.js, Express, Prisma ORM, JWT, Helmet, Express-rate-limit.
+- /frontend : React (Vite), Zustand (state), React Router, i18next (FR/EN/AR avec support dynamique RTL/LTR), Lucide React.
+
+L'objectif est de transformer ce dashboard en un système d'exploitation hôtelier complet (resortOS) haut de gamme, adapté pour des complexes de luxe (ex: Sheraton, Club des Pins à Alger). L'application doit implémenter un Contrôle d'Accès Basé sur les Rôles (RBAC) strict et des modules opérationnels en temps réel, le tout enveloppé dans une interface "Quiet Luxury" (minimaliste, fluide, typographie haut de gamme, micro-interactions).
+
+---
+
+# 1. ARCHITECTURE DES RÔLES & ACCÈS (RBAC avec Prisma & Zod)
+Mets à jour les schémas dans `/shared` et `/backend` pour gérer les espaces et permissions suivants :
+- SUPER_ADMIN / DIRECTION : Vue d'ensemble, analytique financière, gestion des plannings globaux.
+- RECEPTION : Check-in/Check-out ultra-rapide, assignation des chambres, facturation client.
+- HOUSEKEEPING (Gouvernance) : Statut des chambres en temps réel (Sale, En cours, Nettoyée/Inspectée).
+- MAINTENANCE : Gestion des tickets d'incidents techniques, urgences.
+- STAFF / EMPLOI GLOBAL : Accès à son profil, ses horaires, et ses demandes d'interventions.
+
+---
+
+# 2. MODULES FONCTIONNELS À DÉVELOPPER
+
+### A. Portail Réception & Check-in (Front & Back)
+- Vue fluide des arrivées/départs du jour.
+- Formulaire de check-in optimisé (Zod validation) avec attribution dynamique des chambres selon leur statut réel fourni par la gouvernance.
+
+### B. Gestion des Chambres & Housekeeping (Temps Réel)
+- Tableau de bord pour l'équipe de nettoyage. Statuts : `DIRTY` -> `CLEANING` -> `INSPECTED`.
+- Système d'alerte instantané : dès qu'une chambre passe en `INSPECTED`, la réception reçoit une notification visuelle subtile.
+
+### C. Centre d'Entraide & Communication Interne ("Appeler un employé")
+- Module de requêtes de services internes ("Besoin d'aide", "Assistance technique requise en Chambre X").
+- Routage intelligent : une demande de la réception pour une chambre sale envoie une notification ciblée à l'espace Housekeeping.
+
+### D. Planification Avancée & Remplacements Intelligents (Smart Scheduling)
+- Génération et affichage des horaires de travail par département dans l'application.
+- **Option Remplacement / Bourse aux Shifts :** Un employé peut déclarer une absence imprévue/maladie. Le système propose automatiquement le shift aux employés du même département ayant le même rôle, disponible via un bouton "Accepter le remplacement" (validation finale par la direction).
+
+---
+
+# 3. EXIGENCES DE CODE & DESIGN
+- **Design System :** Interface ultra-premium (Quiet Luxury). Utilise des palettes de couleurs sobres, des contrastes raffinés (ombres douces, effet glassmorphism discret pour les statuts) et assure-toi que l'internationalisation `i18next` (RTL pour l'Arabe, LTR pour le Français/Anglais) reste parfaitement alignée sur les nouveaux composants.
+- **State Management :** Utilise Zustand dans `/frontend` en créant des slices de store dédiés par module (ex: `useRoomStore`, `useScheduleStore`) pour éviter les re-renders inutiles et maintenir un niveau de performance 10x.
+- **Sécurité backend :** Protège chaque route Express avec un middleware d'authentification JWT vérifiant le rôle (`checkRole(['RECEPTION', 'SUPER_ADMIN'])`). Les requêtes Prisma doivent utiliser des transactions pour les opérations critiques (ex: validation d'un remplacement de shift).
+
+---
+
+# REQUIS DE LA RÉPONSE
+1. Propose la modification du schéma Prisma (`schema.prisma`) pour intégrer les enums de rôles, le statut des chambres, et le modèle de planning/remplacement.
+2. Structure les nouveaux dossiers/fichiers à créer dans `/frontend`, `/backend`, et `/shared`.
+3. Génère le code propre, typé et modulaire pour le backend (routes + contrôleurs de gestion des shifts et statuts chambres) et le front (le store Zustand et un composant clé du dashboard multi-portail).

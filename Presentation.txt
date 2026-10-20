@@ -1,0 +1,14 @@
+Cette application, Merchant CRM Dashboard (ou Business Pro CRM), est une plateforme CRM (Customer Relationship Management) Full-Stack SaaS prête pour la production.
+
+En analysant la structure du projet dans ton workspace (c:\dev\merchant dashboard), voici l'architecture technique exacte :
+
+1. Architecture Monorepo
+Le projet est organisé en monorepo avec npm workspaces, divisé en trois piliers :
+
+Frontend (/frontend) : Une application React moderne propulsée par Vite. Elle utilise Zustand pour le state management, React Router pour la navigation, et i18next pour le support multi-langues avancé (avec gestion dynamique RTL/LTR pour l'arabe, le français et l'anglais). L'interface utilise Lucide React pour l'iconographie.
+Backend (/backend) : Une API Node.js / Express robuste. Elle s'appuie sur Prisma ORM pour la gestion de la base de données. Elle inclut des standards de sécurité avancés : JWT pour l'authentification, bcrypt pour le hashage, et des middlewares essentiels comme Helmet et express-rate-limit.
+Shared (/shared) : Un package commun au frontend et au backend. Il contient notamment les schémas de validation Zod, garantissant un typage strict et une validation des données cohérente de bout en bout (Server & Client).
+2. Contexte et Objectif
+Il s'agit d'un tableau de bord de gestion client destiné aux marchands/entreprises. C'est l'application sur laquelle nous avons récemment travaillé pour finaliser l'internationalisation complète (Français, Anglais, Arabe), optimiser le layout dynamique, et résoudre les problèmes de CORS pour l'environnement de développement multi-ports.
+
+Tout a été construit pour respecter des standards de haute performance, de sécurité stricte et une interface utilisateur de qualité (Quiet Luxury / Modern Design), conformément à tes exigences d'architecture.

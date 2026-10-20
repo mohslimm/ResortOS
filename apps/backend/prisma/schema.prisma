@@ -1,0 +1,301 @@
+// This is your Prisma schema file — production multi-tenant SaaS ERP
+// Documentation: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN // Platform-level SaaS administrator
+  ADMIN       // Tenant admin (hotel GM)
+  DIRECTOR    // Department director
+  STAFF       // Reception, front-desk
+  SECURITY    // Security personnel
+  HOUSEKEEPER // Housekeeping staff
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  CLEANING
+  MAINTENANCE
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  NO_SHOW
+}
+
+enum HousekeepingStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum ParkingStatus {
+  FREE
+  OCCUPIED
+  RESERVED
+}
+
+enum SubscriptionPlan {
+  STARTER       // Up to 50 rooms, 10 users
+  PROFESSIONAL  // Up to 200 rooms, 50 users
+  ENTERPRISE    // Unlimited
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+  TRIAL
+}
+
+// ─── TENANT (Root of multi-tenancy) ──────────────────────────────
+
+model Tenant {
+  id           String   @id @default(uuid())
+  name         String
+  slug         String   @unique // e.g. "grand-hotel-paris"
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  users         User[]
+  rooms         Room[]
+  guests        Guest[]
+  bookings      Booking[]
+  employees     Employee[]
+  attendanceLogs AttendanceLog[]
+  parkingSlots  ParkingSlot[]
+  parkingSessions ParkingSession[]
+  housekeepingTasks HousekeepingTask[]
+  auditLogs     AuditLog[]
+  subscription  Subscription?
+
+  @@map("tenants")
+}
+
+// ─── SUBSCRIPTION ─────────────────────────────────────────────────
+
+model Subscription {
+  id         String             @id @default(uuid())
+  tenantId   String             @unique
+  tenant     Tenant             @relation(fields: [tenantId], references: [id])
+  plan       SubscriptionPlan   @default(STARTER)
+  status     SubscriptionStatus @default(TRIAL)
+  maxRooms   Int                @default(50)
+  maxUsers   Int                @default(10)
+  trialEndsAt DateTime?
+  billedAt   DateTime?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@map("subscriptions")
+}
+
+// ─── USER ─────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(STAFF)
+  isActive     Boolean  @default(true)
+  refreshToken String?  // Hashed refresh token
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  auditLogs        AuditLog[]
+  housekeepingTasks HousekeepingTask[] @relation("AssignedHousekeepingTasks")
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+// ─── PMS — PROPERTY MANAGEMENT SYSTEM ────────────────────────────
+
+model Room {
+  id            String     @id @default(uuid())
+  tenantId      String
+  tenant        Tenant     @relation(fields: [tenantId], references: [id])
+  number        String
+  type          String     // "Suite Royale", "Double Vue Mer", "Standard"
+  floor         Int        @default(1)
+  pricePerNight Decimal    @default(0) @db.Decimal(10, 2)
+  status        RoomStatus @default(AVAILABLE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  bookings          Booking[]
+  housekeepingTasks HousekeepingTask[]
+
+  @@unique([tenantId, number]) // Room number unique per hotel
+  @@index([tenantId, status])
+  @@map("rooms")
+}
+
+model Guest {
+  id        String    @id @default(uuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  fullName  String
+  email     String?
+  phone     String?
+  idCard    String
+  createdAt DateTime  @default(now())
+
+  bookings  Booking[]
+
+  @@unique([tenantId, idCard]) // ID card unique per tenant
+  @@index([tenantId])
+  @@map("guests")
+}
+
+model Booking {
+  id           String        @id @default(uuid())
+  tenantId     String
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  guestId      String
+  guest        Guest         @relation(fields: [guestId], references: [id])
+  roomId       String
+  room         Room          @relation(fields: [roomId], references: [id])
+  checkIn      DateTime
+  checkOut     DateTime
+  status       BookingStatus @default(CONFIRMED)
+  totalAmount  Decimal       @default(0) @db.Decimal(10, 2)
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, roomId])
+  @@map("bookings")
+}
+
+// ─── HR ──────────────────────────────────────────────────────────
+
+model Employee {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  name       String
+  department String
+  position   String
+  phone      String?
+  isActive   Boolean  @default(true)
+  hireDate   DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  attendanceLogs AttendanceLog[]
+
+  @@index([tenantId])
+  @@map("employees")
+}
+
+model AttendanceLog {
+  id         String    @id @default(uuid())
+  tenantId   String
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+  employeeId String
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  checkIn    DateTime
+  checkOut   DateTime?
+  date       DateTime  @default(now())
+
+  @@index([tenantId, employeeId])
+  @@index([tenantId, date])
+  @@map("attendance_logs")
+}
+
+// ─── PARKING ─────────────────────────────────────────────────────
+
+model ParkingSlot {
+  id         String        @id @default(uuid())
+  tenantId   String
+  tenant     Tenant        @relation(fields: [tenantId], references: [id])
+  slotNumber String
+  zone       String        @default("A")
+  status     ParkingStatus @default(FREE)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  sessions   ParkingSession[]
+
+  @@unique([tenantId, slotNumber])
+  @@index([tenantId, status])
+  @@map("parking_slots")
+}
+
+model ParkingSession {
+  id          String      @id @default(uuid())
+  tenantId    String
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  slotId      String
+  slot        ParkingSlot @relation(fields: [slotId], references: [id])
+  plateNumber String
+  enteredAt   DateTime    @default(now())
+  exitedAt    DateTime?
+  fee         Decimal?    @db.Decimal(10, 2)
+
+  @@index([tenantId, slotId])
+  @@map("parking_sessions")
+}
+
+// ─── HOUSEKEEPING ─────────────────────────────────────────────────
+
+model HousekeepingTask {
+  id           String             @id @default(uuid())
+  tenantId     String
+  tenant       Tenant             @relation(fields: [tenantId], references: [id])
+  roomId       String
+  room         Room               @relation(fields: [roomId], references: [id])
+  assignedToId String?
+  assignedTo   User?              @relation("AssignedHousekeepingTasks", fields: [assignedToId], references: [id])
+  status       HousekeepingStatus @default(PENDING)
+  priority     Int                @default(1) // 1=normal, 2=urgent, 3=critical
+  notes        String?
+  scheduledAt  DateTime           @default(now())
+  completedAt  DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, roomId])
+  @@map("housekeeping_tasks")
+}
+
+// ─── AUDIT LOG ────────────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  eventType String   // e.g. "booking.created", "room.status_changed"
+  module    String   // PMS, HR, PARKING, AUTH
+  payload   Json     @default("{}")
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, eventType])
+  @@index([tenantId, createdAt])
+  @@map("audit_logs")
+}

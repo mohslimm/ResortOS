@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  # ─── Primary Database ───────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    container_name: resortos_db
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: resort_password_2024
+      POSTGRES_DB: resort_erp
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d resort_erp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Cache & Queue (BullMQ ready for Phase 3) ───────────────────
+  cache:
+    image: redis:7-alpine
+    container_name: resortos_cache
+    restart: always
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,24 @@
+{
+  "name": "resort-os",
+  "private": true,
+  "description": "Enterprise Resource Planning for Luxury Resorts — Multi-Tenant SaaS Platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n \"BACKEND,ADMIN\" -c \"magenta,cyan\" \"npm run start:backend\" \"npm run start:admin\"",
+    "start:backend": "npm run start:dev -w apps/backend",
+    "start:admin": "npm run dev -w apps/admin-ui",
+    "db:up": "docker-compose up -d",
+    "db:down": "docker-compose down",
+    "db:migrate": "npm run prisma:migrate -w apps/backend",
+    "db:studio": "npm run prisma:studio -w apps/backend",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "tsc --noEmit -p apps/backend/tsconfig.json && tsc -b apps/admin-ui"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5",
+    "typescript": "^5.4.0"
+  }
+}
